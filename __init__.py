@@ -12,7 +12,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hub = await WaveshareRelayHub.create(entry.data)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
 
-    hass.config_entries.async_setup_platforms(entry, ["switch"])
+    await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
