@@ -3,14 +3,20 @@ from . import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     hub = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(WaveshareRelaySwitch(hub, i + 1) for i in range(hub._num_relays))
+    device_name = entry.data.get("device_name", "waveshare")
+    switches = [
+        WaveshareRelaySwitch(hub, relay_num, device_name)
+        for relay_num in range(1, hub._num_relays + 1)
+    ]
+    async_add_entities(switches, True)
 
 class WaveshareRelaySwitch(SwitchEntity):
-    def __init__(self, hub, relay_number):
+    def __init__(self, hub, relay_number,device_name):
         self._hub = hub
         self._relay_number = relay_number
-        self._attr_name = f"Relay {relay_number}"
-        self._attr_is_on = hub._relay_states[relay_number - 1]
+        self._attr_name = f"{device_name} Relay {relay_number}"
+        self._attr_unique_id = f"{device_name}_relay_{relay_number}"
+        self._attr_is_on = False
 
     async def async_turn_on(self, **kwargs):
         if await self._hub.set_relay_state(self._relay_number, True):

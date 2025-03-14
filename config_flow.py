@@ -10,10 +10,11 @@ class WaveshareRelayConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(
                 step_id="user",
                 data_schema=vol.Schema({
+                    vol.Required("device_name"): str,
                     vol.Required("host"): str,
                     vol.Required("port", default=502): int,
                     vol.Required("num_relays", default=8): vol.In([8, 16, 32]),
                     vol.Optional("device_address", default=1): int,
                 })
             )
-        return self.async_create_entry(title=user_input["host"], data=user_input)
+        return self.async_create_entry(title=user_input["device_name"], data=user_input)

@@ -12,6 +12,7 @@ class WaveshareRelayHub:
         self._lock = asyncio.Lock()
         self._timer = None
         self._byte_size = (self._num_relays + 7) // 8
+        self._timeout = config.get("timeout", 5)
 
     @classmethod
     async def create(cls, config):
@@ -46,18 +47,23 @@ class WaveshareRelayHub:
         return await self.send_command(rs485_command)
 
     async def send_command(self, command):
-        """Handle the TCP connection to the relay hub."""
+        """Handle the TCP connection to the relay hub with timeout."""
         try:
-            reader, writer = await asyncio.open_connection(self._host, self._port)
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(self._host, self._port), timeout=self._timeout
+            )
             writer.write(command)
             await writer.drain()
-            response = await reader.read(1024)
+
+            # Read response with timeout
+            response = await asyncio.wait_for(reader.read(1024), timeout=self._timeout)
             return response
         except (asyncio.TimeoutError, ConnectionError):
             return None
         finally:
-            writer.close()
-            await writer.wait_closed()
+            if 'writer' in locals():
+                writer.close()
+                await writer.wait_closed()
 
     async def read_relay_status(self):
         """Read the status of all relays, fully reversing the byte and bit order."""
