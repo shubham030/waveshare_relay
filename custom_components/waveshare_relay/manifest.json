@@ -1,6 +1,6 @@
 {
   "domain": "waveshare_relay",
-  "name": "Waveshare Relay",
+  "name": "Waveshare Relay Hub",
   "codeowners": ["@shubham030"],
   "dependencies": [],
   "documentation": "https://www.waveshare.com/wiki/Modbus_RTU_Relay_32CH",
