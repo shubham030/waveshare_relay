@@ -24,7 +24,7 @@ async def async_setup_entry(
     device_name = entry.data.get("device_name", "waveshare")
     
     switches = [
-        WaveshareRelaySwitch(hub, relay_num, device_name)
+        WaveshareRelaySwitch(hub, relay_num, device_name, entry.entry_id)
         for relay_num in range(1, hub._num_relays + 1)
     ]
     async_add_entities(switches, True)
@@ -32,18 +32,25 @@ async def async_setup_entry(
 class WaveshareRelaySwitch(SwitchEntity):
     """Representation of a Waveshare Relay switch."""
 
-    def __init__(self, hub, relay_number: int, device_name: str) -> None:
+    def __init__(self, hub, relay_number: int, device_name: str, entry_id: str) -> None:
         """Initialize the switch.
         
         Args:
             hub: The WaveshareRelayHub instance
             relay_number: The relay number (1-based index)
             device_name: The name of the device
+            entry_id: The config entry ID
         """
         self._hub = hub
         self._relay_number = relay_number
         self._attr_name = f"{device_name} Relay {relay_number}"
-        self._attr_unique_id = f"{device_name}_relay_{relay_number}"
+        self._attr_unique_id = f"{entry_id}_relay_{relay_number}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry_id)},
+            "name": device_name,
+            "model": "Waveshare Relay",
+            "manufacturer": "Waveshare",
+        }
         self._attr_is_on = False
         self._last_update = None
         self._error_count = 0

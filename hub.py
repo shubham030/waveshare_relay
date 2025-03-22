@@ -48,6 +48,7 @@ class WaveshareRelayHub:
         self._timeout = config.get("timeout", 5)
         self._last_update = None
         self._is_connected = False
+        self._read_lock = asyncio.Lock()
 
     @classmethod
     async def create(cls, config: dict) -> 'WaveshareRelayHub':
@@ -152,7 +153,10 @@ class WaveshareRelayHub:
                 async with timeout(self._timeout):
                     writer.write(command)
                     await writer.drain()
-                    response = await reader.read(1024)
+                    
+                    # Use a separate lock for reading to prevent concurrent reads
+                    async with self._read_lock:
+                        response = await reader.read(1024)
                     
                 if not response:
                     raise WaveshareRelayError("Empty response from relay module")
