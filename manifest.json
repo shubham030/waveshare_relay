@@ -2,12 +2,13 @@
   "domain": "waveshare_relay",
   "name": "Waveshare Relay Hub",
   "codeowners": ["@shubham030"],
-  "dependencies": [],
-  "documentation": "https://www.waveshare.com/wiki/Modbus_RTU_Relay_32CH",
+  "dependencies": ["async_timeout"],
+  "documentation": "https://github.com/shubham030/waveshare_rtu_relay/",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/shubham030/waveshare_rtu_relay/",
-  "requirements": [],
+  "issue_tracker": "https://github.com/shubham030/waveshare_rtu_relay/issues",
+  "requirements": ["async_timeout>=4.0.0"],
   "version": "1.0.0",
   "config_flow": true,
-  "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTklUgjzuzRg4XjvQx_e-VKl-CH-Tpl8AQkYw&s="
+  "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTklUgjzuzRg4XjvQx_e-VKl-CH-Tpl8AQkYw&s=",
+  "integration_type": "device"
 }
