@@ -34,8 +34,8 @@ async def async_setup_entry(
     # Create switches
     switches = []
     for relay_num in range(1, num_relays + 1):
-        relay_name = relay_names.get(str(relay_num), f"Relay {relay_num}")
-        switches.append(WaveshareRelaySwitch(hub, device_name, relay_num, relay_name))
+        relay_name = relay_names.get(str(relay_num), f"{device_name} Relay {relay_num}")
+        switches.append(WaveshareRelaySwitch(hub, device_name, relay_num, relay_name, bool(str(relay_num) in relay_names)))
 
     async_add_entities(switches, True)
 
@@ -48,6 +48,7 @@ class WaveshareRelaySwitch(SwitchEntity):
         device_name: str,
         relay_num: int,
         relay_name: str,
+        is_mapped: bool,
     ) -> None:
         """Initialize the switch."""
         self._hub = hub
@@ -56,8 +57,27 @@ class WaveshareRelaySwitch(SwitchEntity):
         self._name = relay_name
         self._state = False
         
-        # Generate unique ID using device name and relay number
-        self._attr_unique_id = f"{device_name.lower().replace(' ', '_')}_{relay_num}"
+        # Generate unique ID and entity ID
+        sanitized_device = device_name.lower().replace(' ', '_')
+        if is_mapped:
+            # For mapped relays, use the custom name in the entity ID
+            sanitized_name = relay_name.lower().replace(' ', '_')
+            self._attr_unique_id = f"{sanitized_device}_{sanitized_name}"
+            self.entity_id = f"switch.{sanitized_device}_{sanitized_name}"
+        else:
+            # For unmapped relays, use the relay number
+            self._attr_unique_id = f"{sanitized_device}_relay_{relay_num}"
+            self.entity_id = f"switch.{sanitized_device}_relay_{relay_num}"
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self._device_name)},
+            "name": self._device_name,
+            "manufacturer": "Waveshare",
+            "model": "Relay Module",
+        }
 
     @property
     def name(self) -> str:
