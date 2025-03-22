@@ -1,5 +1,6 @@
 """The Waveshare Relay integration."""
 import logging
+import voluptuous as vol
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -25,7 +26,7 @@ from .hub import WaveshareRelayHub
 _LOGGER = logging.getLogger(__name__)
 
 # YAML configuration schema
-PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend({
+PLATFORM_SCHEMA = vol.Schema({
     vol.Required(CONF_HOST): cv.string,
     vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
     vol.Optional(CONF_DEVICE_NAME, default=DEFAULT_DEVICE_NAME): cv.string,
@@ -34,9 +35,7 @@ PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend({
         vol.Coerce(int),
         vol.Range(min=1, max=247)
     ),
-    vol.Optional(CONF_RELAY_NAMES): vol.Schema({
-        vol.Optional(str): str
-    }),
+    vol.Optional(CONF_RELAY_NAMES): dict,
 })
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -45,13 +44,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return True
 
     for entry_config in config[DOMAIN]:
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "import"},
-                data=entry_config,
+        try:
+            # Validate the configuration
+            entry_config = PLATFORM_SCHEMA(entry_config)
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "import"},
+                    data=entry_config,
+                )
             )
-        )
+        except vol.Invalid as err:
+            _LOGGER.error("Invalid configuration: %s", err)
+            continue
 
     return True
 

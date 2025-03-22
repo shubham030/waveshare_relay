@@ -52,9 +52,7 @@ class WaveshareRelayConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Coerce(int),
                     vol.Range(min=1, max=247)
                 ),
-                vol.Optional(CONF_RELAY_NAMES): vol.Schema({
-                    vol.Optional(str): str
-                }),
+                vol.Optional(CONF_RELAY_NAMES): dict,
             }),
             errors=errors,
         )
