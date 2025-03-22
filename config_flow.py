@@ -3,7 +3,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import selector
+from homeassistant.helpers import config_validation as cv
+
 from . import DOMAIN
 from .hub import WaveshareRelayHub
 from .const import (
@@ -17,6 +18,10 @@ from .const import (
     DEFAULT_DEVICE_NAME,
     VALID_NUM_RELAYS,
 )
+
+RELAY_NAMES_SCHEMA = vol.Schema({
+    vol.Optional(str): cv.string
+})
 
 class WaveshareRelayConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Waveshare Relay."""
@@ -44,15 +49,15 @@ class WaveshareRelayConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required(CONF_DEVICE_NAME, default=DEFAULT_DEVICE_NAME): str,
-                vol.Required(CONF_HOST): str,
-                vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
+                vol.Required(CONF_DEVICE_NAME, default=DEFAULT_DEVICE_NAME): cv.string,
+                vol.Required(CONF_HOST): cv.string,
+                vol.Required(CONF_PORT, default=DEFAULT_PORT): cv.port,
                 vol.Required(CONF_NUM_RELAYS, default=DEFAULT_NUM_RELAYS): vol.In(VALID_NUM_RELAYS),
                 vol.Optional(CONF_DEVICE_ADDRESS, default=DEFAULT_DEVICE_ADDRESS): vol.All(
                     vol.Coerce(int),
                     vol.Range(min=1, max=247)
                 ),
-                vol.Optional(CONF_RELAY_NAMES): dict,
+                vol.Optional(CONF_RELAY_NAMES): RELAY_NAMES_SCHEMA,
             }),
             errors=errors,
         )
