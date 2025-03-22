@@ -72,8 +72,8 @@ class WaveshareRelaySwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         try:
-            await self._hub.set_relay(self._relay_num, True)
-            self._state = True
+            if await self._hub.set_relay_state(self._relay_num, True):
+                self._state = True
         except Exception as err:
             _LOGGER.error("Error turning on relay %d: %s", self._relay_num, err)
             raise
@@ -81,8 +81,8 @@ class WaveshareRelaySwitch(SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         try:
-            await self._hub.set_relay(self._relay_num, False)
-            self._state = False
+            if await self._hub.set_relay_state(self._relay_num, False):
+                self._state = False
         except Exception as err:
             _LOGGER.error("Error turning off relay %d: %s", self._relay_num, err)
             raise
@@ -90,6 +90,8 @@ class WaveshareRelaySwitch(SwitchEntity):
     async def async_update(self) -> None:
         """Update the switch state."""
         try:
-            self._state = await self._hub.read_relay(self._relay_num)
+            states = await self._hub.read_relay_status()
+            if states is not None:
+                self._state = states[self._relay_num - 1]
         except Exception as err:
             _LOGGER.error("Error updating relay %d: %s", self._relay_num, err)
