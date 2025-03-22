@@ -56,9 +56,8 @@ class WaveshareRelaySwitch(SwitchEntity):
         self._name = relay_name
         self._state = False
         
-        # Generate unique ID using relay name if present, otherwise use relay number
-        id_suffix = relay_name.lower().replace(" ", "_") if relay_name != f"Relay {relay_num}" else str(relay_num)
-        self._attr_unique_id = f"{device_name.lower().replace(' ', '_')}_{id_suffix}"
+        # Generate unique ID using device name and relay number
+        self._attr_unique_id = f"{device_name.lower().replace(' ', '_')}_{relay_num}"
 
     @property
     def name(self) -> str:

@@ -6,8 +6,26 @@ It provides methods to control multiple relays and manage their states.
 
 import asyncio
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any, Dict
 from async_timeout import timeout
+from datetime import datetime
+
+from homeassistant.exceptions import ConfigEntryNotReady
+from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.exceptions import ModbusException
+
+from .const import (
+    CONF_DEVICE_NAME,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_NUM_RELAYS,
+    CONF_DEVICE_ADDRESS,
+    DEFAULT_PORT,
+    DEFAULT_NUM_RELAYS,
+    DEFAULT_DEVICE_ADDRESS,
+    MIN_RELAY_NUMBER,
+    MAX_RELAY_NUMBER,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,191 +40,175 @@ class WaveshareRelayHub:
     It manages the state of multiple relays and provides methods to control them.
     """
 
-    def __init__(self, config: dict):
-        """Initialize the Waveshare Relay Hub.
-        
-        Args:
-            config: Configuration dictionary containing:
-                - host: IP address of the relay module
-                - port: TCP port number
-                - num_relays: Number of relays (1-32)
-                - device_address: Modbus device address (default: 0x01)
-                - timeout: Connection timeout in seconds (default: 5)
-        """
-        if not 1 <= config["num_relays"] <= 32:
-            raise ValueError("Number of relays must be between 1 and 32")
-            
-        self._host = config["host"]
-        self._port = config["port"]
-        self._num_relays = config["num_relays"]
-        self._device_address = config.get("device_address", 0x01)
-        self._relay_states = [False] * self._num_relays
-        self._lock = asyncio.Lock()
-        self._connection: Optional[Tuple[asyncio.StreamReader, asyncio.StreamWriter]] = None
-        self._connection_lock = asyncio.Lock()
-        self._byte_size = (self._num_relays + 7) // 8
-        self._timeout = config.get("timeout", 5)
-        self._last_update = None
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        device_address: int,
+        num_relays: int,
+        device_name: str,
+    ) -> None:
+        """Initialize the hub."""
+        self._host = host
+        self._port = port
+        self._device_address = device_address
+        self._num_relays = num_relays
+        self._device_name = device_name
+        self._client: Optional[AsyncModbusTcpClient] = None
         self._is_connected = False
-        self._read_lock = asyncio.Lock()
+        self._last_update = None
+        self._error_count = 0
+        self._max_errors = 3
 
     @classmethod
-    async def create(cls, config: dict) -> 'WaveshareRelayHub':
-        """Alternative constructor to ensure initialization finishes before returning.
-        
-        Args:
-            config: Configuration dictionary
-            
-        Returns:
-            Initialized WaveshareRelayHub instance
-        """
-        self = cls(config)
-        await self.read_relay_status()
-        return self
+    async def create(cls, config: Dict[str, Any]) -> "WaveshareRelayHub":
+        """Create a new hub instance."""
+        hub = cls(
+            host=config[CONF_HOST],
+            port=config.get(CONF_PORT, DEFAULT_PORT),
+            device_address=config.get(CONF_DEVICE_ADDRESS, DEFAULT_DEVICE_ADDRESS),
+            num_relays=config.get(CONF_NUM_RELAYS, DEFAULT_NUM_RELAYS),
+            device_name=config.get(CONF_DEVICE_NAME, "waveshare"),
+        )
+        await hub.connect()
+        return hub
 
-    async def _ensure_connection(self) -> None:
-        """Ensure a connection is established with the relay module."""
-        async with self._connection_lock:
-            if self._connection is None:
-                try:
-                    async with timeout(self._timeout):
-                        self._connection = await asyncio.open_connection(self._host, self._port)
-                        self._is_connected = True
-                except (asyncio.TimeoutError, ConnectionError) as e:
-                    self._is_connected = False
-                    raise WaveshareRelayError(f"Failed to connect to relay module: {e}")
-
-    async def _close_connection(self) -> None:
-        """Close the connection to the relay module."""
-        async with self._connection_lock:
-            if self._connection is not None:
-                writer = self._connection[1]
-                writer.close()
-                await writer.wait_closed()
-                self._connection = None
-                self._is_connected = False
-
-    async def set_relay_state(self, relay_number: int, state: bool) -> bool:
-        """Set an individual relay state and immediately send the update.
-        
-        Args:
-            relay_number: Relay number (1-based index)
-            state: True to turn on, False to turn off
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if not 1 <= relay_number <= self._num_relays:
-            raise ValueError(f"Relay number must be between 1 and {self._num_relays}")
-            
-        async with self._lock:
-            try:
-                self._relay_states[relay_number - 1] = state
-                response = await self._send_relay_states()
-                if response is not None:
-                    self._last_update = asyncio.get_event_loop().time()
-                    return True
-                return False
-            except WaveshareRelayError as e:
-                _LOGGER.error("Failed to set relay state: %s", e)
-                return False
-
-    async def _send_relay_states(self) -> Optional[bytes]:
-        """Prepare and send the updated relay state command.
-        
-        Returns:
-            bytes: Response from the relay module if successful, None otherwise
-        """
+    async def connect(self) -> None:
+        """Connect to the Modbus TCP client."""
         try:
-            await self._ensure_connection()
-            bit_pattern = sum((1 << i) for i, relay_state in enumerate(self._relay_states) if relay_state)
-            bit_pattern_bytes = bit_pattern.to_bytes(self._byte_size)
-            
-            rs485_command = bytes([
-                self._device_address, 0x0F, 0x00, 0x00, 0x00,
-                self._num_relays, self._byte_size
-            ]) + bit_pattern_bytes
-            
-            crc = self.calculate_crc(rs485_command)
-            rs485_command += crc
-            
-            return await self.send_command(rs485_command)
-        except WaveshareRelayError:
-            await self._close_connection()
+            self._client = AsyncModbusTcpClient(
+                host=self._host,
+                port=self._port,
+                timeout=1,
+            )
+            await self._client.connect()
+            self._is_connected = True
+            self._error_count = 0
+        except Exception as err:
+            self._is_connected = False
+            self._error_count += 1
+            _LOGGER.error("Failed to connect to %s: %s", self._host, err)
+            raise ConfigEntryNotReady from err
+
+    async def close(self) -> None:
+        """Close the Modbus TCP client."""
+        if self._client:
+            await self._client.close()
+            self._is_connected = False
+
+    async def read_relay_status(self) -> Optional[list[bool]]:
+        """Read the status of all relays."""
+        if not self._is_connected:
+            await self.connect()
+            if not self._is_connected:
+                return None
+
+        try:
+            # Read holding registers for relay status
+            result = await self._client.read_holding_registers(
+                address=0,  # Starting address for relay status
+                count=self._num_relays,
+                slave=self._device_address,
+            )
+            if result.isError():
+                self._error_count += 1
+                _LOGGER.error("Error reading relay status: %s", result)
+                return None
+
+            # Convert register values to boolean list
+            states = []
+            for i in range(self._num_relays):
+                # Each relay status is stored in a bit of the register
+                register_index = i // 16
+                bit_position = i % 16
+                register_value = result.registers[register_index]
+                state = bool(register_value & (1 << bit_position))
+                states.append(state)
+
+            self._error_count = 0
+            self._last_update = datetime.now()
+            return states
+
+        except ModbusException as err:
+            self._error_count += 1
+            _LOGGER.error("Modbus error reading relay status: %s", err)
+            return None
+        except Exception as err:
+            self._error_count += 1
+            _LOGGER.error("Error reading relay status: %s", err)
             return None
 
-    async def send_command(self, command: bytes, max_retries: int = 3) -> Optional[bytes]:
-        """Handle the TCP connection to the relay hub with timeout and retries.
-        
-        Args:
-            command: Command bytes to send
-            max_retries: Maximum number of retry attempts
-            
-        Returns:
-            bytes: Response from the relay module if successful, None otherwise
-        """
-        for attempt in range(max_retries):
-            try:
-                await self._ensure_connection()
-                reader, writer = self._connection
-                
-                async with timeout(self._timeout):
-                    writer.write(command)
-                    await writer.drain()
-                    
-                    # Use a separate lock for reading to prevent concurrent reads
-                    async with self._read_lock:
-                        response = await reader.read(1024)
-                    
-                if not response:
-                    raise WaveshareRelayError("Empty response from relay module")
-                    
-                return response
-                
-            except (asyncio.TimeoutError, ConnectionError) as e:
-                _LOGGER.warning("Attempt %d failed: %s", attempt + 1, e)
-                await self._close_connection()
-                if attempt == max_retries - 1:
-                    raise WaveshareRelayError(f"Failed after {max_retries} attempts: {e}")
-                await asyncio.sleep(1)
-                
-        return None
+    async def read_relay(self, relay_number: int) -> bool:
+        """Read the status of a specific relay."""
+        if not MIN_RELAY_NUMBER <= relay_number <= self._num_relays:
+            raise ValueError(f"Relay number must be between {MIN_RELAY_NUMBER} and {self._num_relays}")
 
-    async def read_relay_status(self) -> Optional[List[bool]]:
-        """Read the status of all relays.
-        
-        Returns:
-            List[bool]: List of relay states if successful, None otherwise
-        """
+        states = await self.read_relay_status()
+        if states is None:
+            raise ValueError("Failed to read relay status")
+        return states[relay_number - 1]
+
+    async def set_relay(self, relay_number: int, state: bool) -> None:
+        """Set the state of a specific relay."""
+        if not MIN_RELAY_NUMBER <= relay_number <= self._num_relays:
+            raise ValueError(f"Relay number must be between {MIN_RELAY_NUMBER} and {self._num_relays}")
+
+        if not self._is_connected:
+            await self.connect()
+            if not self._is_connected:
+                raise ValueError("Failed to connect to device")
+
         try:
-            query_command = bytes([
-                self._device_address, 0x01, 0x00, 0x00, 0x00, self._num_relays
-            ])
-            crc = self.calculate_crc(query_command)
-            query_command += crc
+            # Calculate register address and bit position
+            register_index = (relay_number - 1) // 16
+            bit_position = (relay_number - 1) % 16
 
-            response = await self.send_command(query_command)
-            if response is None or len(response) < 5 + (self._num_relays + 7) // 8:
-                raise WaveshareRelayError("Invalid response length")
+            # Read current register value
+            result = await self._client.read_holding_registers(
+                address=register_index,
+                count=1,
+                slave=self._device_address,
+            )
+            if result.isError():
+                raise ValueError(f"Error reading register: {result}")
 
-            status_bytes = response[3:-2]
-            full_binary = ''.join(f"{byte:08b}" for byte in status_bytes)[::-1]
-            self._relay_states = [bit == "1" for bit in full_binary[:self._num_relays]]
-            self._last_update = asyncio.get_event_loop().time()
-            return self._relay_states
-            
-        except WaveshareRelayError as e:
-            _LOGGER.error("Failed to read relay status: %s", e)
-            return None
+            current_value = result.registers[0]
+
+            # Update the specific bit
+            if state:
+                new_value = current_value | (1 << bit_position)
+            else:
+                new_value = current_value & ~(1 << bit_position)
+
+            # Write the updated value
+            result = await self._client.write_register(
+                address=register_index,
+                value=new_value,
+                slave=self._device_address,
+            )
+            if result.isError():
+                raise ValueError(f"Error writing register: {result}")
+
+            self._error_count = 0
+            self._last_update = datetime.now()
+
+        except ModbusException as err:
+            self._error_count += 1
+            _LOGGER.error("Modbus error setting relay state: %s", err)
+            raise ValueError(f"Modbus error: {err}")
+        except Exception as err:
+            self._error_count += 1
+            _LOGGER.error("Error setting relay state: %s", err)
+            raise ValueError(f"Error: {err}")
 
     @property
     def is_connected(self) -> bool:
-        """Get the connection status of the hub."""
+        """Return True if the hub is connected."""
         return self._is_connected
 
     @property
-    def last_update(self) -> Optional[float]:
-        """Get the timestamp of the last successful update."""
+    def last_update(self) -> Optional[datetime]:
+        """Return the timestamp of the last successful update."""
         return self._last_update
 
     @staticmethod
