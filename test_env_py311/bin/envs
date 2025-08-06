@@ -1,0 +1,7 @@
+#!/Users/shubham/Desktop/Personal/waveshare_relay/test_env_py311/bin/python3.11
+import sys
+from envs.cli import envs
+if __name__ == '__main__':
+    if sys.argv[0].endswith('.exe'):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(envs())

@@ -1,17 +1,21 @@
 import asyncio
 import logging
-from .const import CONF_LIGHTS, CONF_SWITCHES
+import json
+import os
+from pathlib import Path
+from .const import CONF_LIGHTS, CONF_SWITCHES, CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 class WaveshareRelayHub:
     """Hub to manage all the Waveshare Relays."""
 
-    def __init__(self, config):
+    def __init__(self, config, hass=None):
         self._host = config["host"]
         self._port = config["port"]
         self._device_address = config.get("device_address", 0x01)
         self._timeout = config.get("timeout", 5)
+        self._hass = hass
         
         # Get the total number of relays from the device
         self._num_relays = config.get("num_relays", 32)  # Default to 32 if not specified
@@ -20,15 +24,22 @@ class WaveshareRelayHub:
         self._timer = None
         self._byte_size = (self._num_relays + 7) // 8
         
+        # Last state configuration
+        self._restore_state = config.get(CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE)
+        self._state_file = None
+        if self._hass and self._restore_state:
+            self._state_file = Path(self._hass.config.config_dir) / f"{DOMAIN}_{self._host}_{self._port}.json"
+        
         # Track which relays are actually configured
         self._configured_relays = self._get_configured_relays(config)
         
         _LOGGER.debug(
-            "Initialized WaveshareRelayHub: host=%s, port=%s, num_relays=%s, configured_relays=%s",
+            "Initialized WaveshareRelayHub: host=%s, port=%s, num_relays=%s, configured_relays=%s, restore_state=%s",
             self._host,
             self._port,
             self._num_relays,
-            self._configured_relays
+            self._configured_relays,
+            self._restore_state
         )
 
     def _get_configured_relays(self, config):
@@ -46,21 +57,65 @@ class WaveshareRelayHub:
         return configured
 
     @classmethod
-    async def create(cls, config):
+    async def create(cls, config, hass=None):
         """Alternative constructor to ensure initialization finishes before returning."""
-        self = cls(config)
+        self = cls(config, hass)
         await self.read_relay_status()
         return self
+
+    async def _load_last_states(self):
+        """Load last known states from file."""
+        if not self._state_file or not self._state_file.exists():
+            _LOGGER.debug("No last state file found, using default states")
+            return
+            
+        try:
+            with open(self._state_file, 'r') as f:
+                saved_states = json.load(f)
+                _LOGGER.debug("Loaded last states: %s", saved_states)
+                
+                # Apply saved states to configured relays only
+                for relay_num, state in saved_states.items():
+                    relay_num = int(relay_num)
+                    if relay_num in self._configured_relays and 1 <= relay_num <= self._num_relays:
+                        self._relay_states[relay_num - 1] = state
+                        _LOGGER.debug("Restored relay %s to state: %s", relay_num, state)
+                        
+        except (json.JSONDecodeError, IOError) as e:
+            _LOGGER.warning("Failed to load last states: %s", e)
+
+    async def _save_last_states(self):
+        """Save current states to file."""
+        if not self._state_file:
+            return
+            
+        try:
+            # Create directory if it doesn't exist
+            self._state_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Save only configured relay states
+            states_to_save = {}
+            for relay_num in self._configured_relays:
+                if 1 <= relay_num <= self._num_relays:
+                    states_to_save[str(relay_num)] = self._relay_states[relay_num - 1]
+            
+            with open(self._state_file, 'w') as f:
+                json.dump(states_to_save, f)
+                
+            _LOGGER.debug("Saved last states: %s", states_to_save)
+            
+        except IOError as e:
+            _LOGGER.error("Failed to save last states: %s", e)
 
     async def set_relay_state(self, relay_number, state):
         """Set an individual relay state and immediately send the update."""
         if relay_number < 1 or relay_number > self._num_relays:
             _LOGGER.error("Invalid relay number: %s (must be between 1 and %s)", relay_number, self._num_relays)
-            return False
+            raise ValueError(f"Invalid relay number: {relay_number} (must be between 1 and {self._num_relays})")
             
         if relay_number not in self._configured_relays:
             _LOGGER.error("Relay %s is not configured", relay_number)
-            return False
+            raise ValueError(f"Relay {relay_number} is not configured")
             
         async with self._lock:
             # Update the relay state
@@ -71,12 +126,39 @@ class WaveshareRelayHub:
                 state,
                 self._relay_states
             )
+            
+            # Save the new state
+            await self._save_last_states()
+            
             # Send the updated relay states immediately
             response = await self._send_relay_states()
             # Return success or failure based on response
             if response is None:
                 _LOGGER.error("Failed to send relay states to device")
             return response is not None
+
+    async def restore_last_states(self):
+        """Restore last known states to the device."""
+        if not self._restore_state:
+            _LOGGER.debug("State restoration disabled")
+            return
+            
+        await self._load_last_states()
+        
+        # Check if we have any saved states to restore
+        has_saved_states = any(self._relay_states)
+        if not has_saved_states:
+            _LOGGER.debug("No saved states to restore")
+            return
+            
+        _LOGGER.info("Restoring last known relay states")
+        
+        # Send the restored states to the device
+        response = await self._send_relay_states()
+        if response is None:
+            _LOGGER.error("Failed to restore relay states to device")
+        else:
+            _LOGGER.info("Successfully restored relay states")
 
     async def _send_relay_states(self):
         """Prepare and send the updated relay state command."""

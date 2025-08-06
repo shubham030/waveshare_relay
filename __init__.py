@@ -20,9 +20,11 @@ from .const import (
     CONF_LIGHTS,
     CONF_SWITCHES,
     CONF_ADDRESS,
+    CONF_RESTORE_STATE,
     DEFAULT_PORT,
     DEFAULT_DEVICE_ADDRESS,
     DEFAULT_TIMEOUT,
+    DEFAULT_RESTORE_STATE,
 )
 from .hub import WaveshareRelayHub
 
@@ -38,6 +40,7 @@ RELAY_MODULE_SCHEMA = vol.Schema(
         vol.Optional(CONF_DEVICE_ADDRESS, default=DEFAULT_DEVICE_ADDRESS): cv.positive_int,
         vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): cv.positive_int,
         vol.Optional("num_relays", default=32): vol.All(cv.positive_int, vol.Range(min=1, max=32)),
+        vol.Optional(CONF_RESTORE_STATE, default=DEFAULT_RESTORE_STATE): cv.boolean,
         vol.Optional(CONF_LIGHTS, default=[]): [
             vol.Schema(
                 {
@@ -84,9 +87,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     hass.data.setdefault(DOMAIN, {})
     for entry_config in config[DOMAIN]:
         _LOGGER.debug("Setting up Waveshare Relay hub: %s", entry_config[CONF_NAME])
-        hub = await WaveshareRelayHub.create(entry_config)
+        hub = await WaveshareRelayHub.create(entry_config, hass)
         entry_id = f"{entry_config[CONF_HOST]}_{entry_config[CONF_NAME]}"
         hass.data[DOMAIN][entry_id] = hub
+
+        # Restore last states if enabled
+        if entry_config.get(CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE):
+            await hub.restore_last_states()
 
         # Load platforms for this hub
         _LOGGER.debug("Loading light platform for hub: %s", entry_config[CONF_NAME])
@@ -116,9 +123,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Waveshare Relay from a config entry."""
-    hub = await WaveshareRelayHub.create(entry.data)
+    hub = await WaveshareRelayHub.create(entry.data, hass)
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = hub
+
+    # Restore last states if enabled
+    if entry.data.get(CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE):
+        await hub.restore_last_states()
 
     # Forward the setup to the platforms
     await hass.config_entries.async_forward_entry_setups(entry, ["light", "switch"])

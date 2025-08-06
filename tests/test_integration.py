@@ -97,7 +97,12 @@ class TestIntegration:
         with patch('waveshare_relay.async_load_platform') as mock_load_platform:
             with patch('waveshare_relay.WaveshareRelayHub.create', new_callable=AsyncMock) as mock_create:
                 mock_hub = MagicMock()
+                mock_hub.restore_last_states = AsyncMock()
                 mock_create.return_value = mock_hub
+                # Ensure the mock is called with hass parameter and returns awaitable
+                async def mock_create_func(config, hass=None):
+                    return mock_hub
+                mock_create.side_effect = mock_create_func
                 
                 result = await async_setup(mock_hass, yaml_config)
                 
@@ -147,7 +152,12 @@ class TestIntegration:
         
         with patch('waveshare_relay.WaveshareRelayHub.create', new_callable=AsyncMock) as mock_create:
             mock_hub = MagicMock()
+            mock_hub.restore_last_states = AsyncMock()
             mock_create.return_value = mock_hub
+            # Ensure the mock is called with hass parameter and returns awaitable
+            async def mock_create_func(config, hass=None):
+                return mock_hub
+            mock_create.side_effect = mock_create_func
             
             result = await async_setup_entry(mock_hass, mock_entry)
             
