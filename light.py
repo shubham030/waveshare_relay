@@ -8,8 +8,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.discovery import async_load_platform
 
-from custom_components.waveshare_relay import DOMAIN
-from custom_components.waveshare_relay.const import CONF_LIGHTS, CONF_NAME, CONF_ADDRESS
+from . import DOMAIN
+from .const import CONF_LIGHTS, CONF_NAME, CONF_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -101,18 +101,24 @@ class WaveshareRelayLight(LightEntity):
     async def async_turn_on(self, **kwargs):
         """Turn the light on."""
         _LOGGER.debug("Turning on light: %s", self._attr_name)
-        if await self._hub.set_relay_state(self._address, True):
-            self._attr_is_on = True
-            self.async_write_ha_state()
+        success = await self._hub.set_relay_state(self._address, True)
+        self._attr_is_on = True
+        self.async_write_ha_state()
+        if success:
             _LOGGER.debug("Light turned on: %s", self._attr_name)
+        else:
+            _LOGGER.warning("Light turn on command failed: %s", self._attr_name)
 
     async def async_turn_off(self, **kwargs):
         """Turn the light off."""
         _LOGGER.debug("Turning off light: %s", self._attr_name)
-        if await self._hub.set_relay_state(self._address, False):
-            self._attr_is_on = False
-            self.async_write_ha_state()
+        success = await self._hub.set_relay_state(self._address, False)
+        self._attr_is_on = False
+        self.async_write_ha_state()
+        if success:
             _LOGGER.debug("Light turned off: %s", self._attr_name)
+        else:
+            _LOGGER.warning("Light turn off command failed: %s", self._attr_name)
 
     async def async_update(self):
         """Update the light state."""
