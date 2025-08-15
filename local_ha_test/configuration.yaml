@@ -1,0 +1,43 @@
+# Local Home Assistant Configuration for Testing Waveshare Relay Integration
+default_config:
+
+# Enable logging for debugging
+logger:
+  default: info
+  logs:
+    custom_components.waveshare_relay: debug
+    waveshare_relay: debug
+
+# Test configuration for waveshare relay
+waveshare_relay:
+  - name: "Test Relay Hub"
+    host: "127.0.0.1"  # Use localhost for mock server testing
+    port: 502
+    device_address: 1
+    timeout: 5
+    restore_state: true
+    lights:
+      - name: "Test Light 1"
+        address: 1
+      - name: "Test Light 2"
+        address: 2
+    switches:
+      - name: "Test Switch 1"
+        address: 3
+      - name: "Test Switch 2"
+        address: 4
+
+# Enable frontend for testing
+frontend:
+
+# Enable API for testing
+api:
+
+# Enable websocket API
+websocket_api:
+
+# Enable discovery
+discovery:
+
+# Enable configuration
+config: 
