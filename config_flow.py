@@ -62,10 +62,9 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     if "num_relays" in data:
         data["num_relays"] = int(data["num_relays"])
 
-    hub = WaveshareRelayHub(data)
-    
-    # Test the connection
+    # Test connection to the hub
     try:
+        hub = WaveshareRelayHub(data)
         await hub.read_relay_status()
     except Exception as exc:
         _LOGGER.error("Failed to connect to hub: %s", exc)
@@ -83,6 +82,7 @@ class ConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Waveshare Relay Hub."""
 
     VERSION = 1
+    DOMAIN = DOMAIN
     
     def __init__(self):
         """Initialize the config flow."""
