@@ -2,11 +2,62 @@
   "config": {
     "step": {
       "user": {
+        "title": "Waveshare Relay Hub Setup",
+        "description": "Configure your Waveshare Relay Hub connection",
         "data": {
-          "host": "IP Address",
+          "host": "Host IP Address",
           "port": "Port",
+          "name": "Hub Name",
+          "device_address": "Modbus Device Address",
           "num_relays": "Number of Relays",
-          "device_address": "Device Address"
+          "timeout": "Connection Timeout (seconds)",
+          "poll_interval": "Polling Interval (seconds)",
+          "max_retries": "Maximum Retry Attempts",
+          "restore_state": "Restore states on restart"
+        },
+        "data_description": {
+          "host": "IP address of the RS485 TO ETH gateway",
+          "port": "TCP port number (usually 502)",
+          "name": "Friendly name for this relay hub",
+          "device_address": "Modbus device address (1-255)",
+          "num_relays": "Number of relay channels on the module",
+          "timeout": "Timeout for network operations",
+          "poll_interval": "How often to check relay status",
+          "max_retries": "Number of times to retry failed commands",
+          "restore_state": "Restore relay states when Home Assistant restarts"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Waveshare Relay Hub",
+        "description": "Re-enter the connection details for your Waveshare Relay Hub"
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device. Please check the host, port, and network connectivity.",
+      "invalid_auth": "Invalid authentication credentials.",
+      "unknown": "Unexpected error occurred. Please check the logs for more details."
+    },
+    "abort": {
+      "already_configured": "This device is already configured with the same host and port.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Waveshare Relay Hub Options",
+        "description": "Configure advanced options for your relay hub",
+        "data": {
+          "poll_interval": "Polling Interval (seconds)",
+          "max_retries": "Maximum Retry Attempts",
+          "timeout": "Connection Timeout (seconds)",
+          "restore_state": "Restore states on restart"
+        },
+        "data_description": {
+          "poll_interval": "How often to check relay status (5-300 seconds)",
+          "max_retries": "Number of times to retry failed commands (1-10)",
+          "timeout": "Timeout for network operations (1-60 seconds)",
+          "restore_state": "Restore relay states when Home Assistant restarts"
         }
       }
     }
