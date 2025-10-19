@@ -1,28 +1,76 @@
-# Waveshare Relay Home Assistant Integration
+# Waveshare Relay Hub for Home Assistant
 
-A Home Assistant integration for controlling Waveshare Modbus RTU Relay modules (32-channel) via TCP/IP.
+[![GitHub Release][releases-shield]][releases]
+[![GitHub Activity][commits-shield]][commits]
+[![License][license-shield]](LICENSE)
+[![hacs][hacs-shield]][hacs]
+[![Community Forum][forum-shield]][forum]
 
-## Features
+**Production-ready Home Assistant integration for Waveshare Relay modules via RS485 TO ETH (B) gateway.**
 
-- **Dual Configuration**: Supports both YAML and Config Flow setup
-- **Multiple Entity Types**: Create switch and light entities for relay control
-- **Flexible Mapping**: Map specific relays to lights or switches
-- **State Synchronization**: Reads actual relay states from device
-- **Error Handling**: Comprehensive error handling and logging
-- **Thread Safety**: Uses asyncio locks for concurrent access
+This custom component provides reliable control of Waveshare 32-channel relay modules through the Waveshare RS485 TO ETH (B) TCP server. Perfect for industrial automation, home automation, and IoT projects requiring robust relay control.
 
-## Supported Devices
+## ✨ Features
 
-- Waveshare Modbus RTU Relay 32CH
-- Other compatible Modbus RTU relay modules
+- 🔄 **Robust Connection Management**: Automatic retry logic with exponential backoff
+- ⚡ **Circuit Breaker Pattern**: Prevents system overload during failures  
+- 📊 **Performance Monitoring**: Real-time statistics and diagnostics
+- 🎯 **Smart Polling**: Adaptive polling intervals based on network conditions
+- 🔍 **State Verification**: Ensures commands actually succeeded
+- 🏠 **Full HA Integration**: Native lights and switches with all features
+- ⚙️ **Highly Configurable**: Tune retry behavior, timeouts, and polling
+- 🔧 **Production Ready**: Extensively tested for reliability
 
-## Installation
+## 🛠 Hardware Requirements
 
-### Manual Installation
+- **Waveshare RS485 TO ETH (B)** or **RS485 TO POE ETH (B)** gateway
+- **Waveshare Modbus RTU Relay** (8CH, 16CH, or 32CH)
+- Network connection between Home Assistant and the gateway
 
-1. Copy the `waveshare_relay` folder to your `custom_components` directory
-2. Restart Home Assistant
-3. Add configuration via YAML or use the Config Flow
+### Supported Hardware
+
+| Component | Model | Notes |
+|-----------|-------|-------|
+| Gateway | RS485 TO ETH (B) | TCP server mode |
+| Gateway | RS485 TO POE ETH (B) | PoE powered version |
+| Relay | Modbus RTU Relay 8CH | 8 relay channels |
+| Relay | Modbus RTU Relay 16CH | 16 relay channels |
+| Relay | Modbus RTU Relay 32CH | 32 relay channels |
+
+## 📦 Installation
+
+### Option 1: HACS (Recommended)
+
+1. **Add Custom Repository**:
+   - Open HACS in Home Assistant
+   - Go to "Integrations"
+   - Click the three dots menu → "Custom repositories"
+   - Add repository URL: `https://github.com/shubham030/waveshare_relay`
+   - Category: "Integration"
+   - Click "Add"
+
+2. **Install Integration**:
+   - Search for "Waveshare Relay Hub"
+   - Click "Download"
+   - Restart Home Assistant
+
+3. **Add Integration**:
+   - Go to Settings → Devices & Services
+   - Click "Add Integration"
+   - Search for "Waveshare Relay Hub"
+   - Follow the configuration steps
+
+### Option 2: Manual Installation
+
+1. **Download Files**:
+   ```bash
+   cd /config/custom_components/
+   git clone https://github.com/shubham030/waveshare_relay.git
+   ```
+
+2. **Restart Home Assistant**
+
+3. **Add Integration** via UI or YAML configuration
 
 ### YAML Configuration
 

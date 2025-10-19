@@ -3,12 +3,13 @@
   "name": "Waveshare Relay Hub",
   "codeowners": ["@shubham030"],
   "dependencies": [],
-  "documentation": "https://www.waveshare.com/wiki/Modbus_RTU_Relay_32CH",
+  "documentation": "https://github.com/shubham030/waveshare_relay",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/shubham030/waveshare_rtu_relay/",
+  "issue_tracker": "https://github.com/shubham030/waveshare_relay/issues",
   "requirements": [],
-  "version": "1.0.0",
-  "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTklUgjzuzRg4XjvQx_e-VKl-CH-Tpl8AQkYw&s=",
+  "version": "2.0.0",
   "config_flow": true,
-  "platforms": ["light", "switch"]
+  "platforms": ["light", "switch"],
+  "after_dependencies": [],
+  "homeassistant": "2023.1.0"
 }

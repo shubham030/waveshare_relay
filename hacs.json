@@ -1,0 +1,11 @@
+{
+  "name": "Waveshare Relay Hub",
+  "content_in_root": false,
+  "filename": "waveshare_relay",
+  "country": ["US", "GB", "DE", "FR", "IT", "ES", "NL", "SE", "NO", "DK", "FI", "BE", "AT", "CH", "AU", "CA", "JP", "CN", "IN"],
+  "domains": ["light", "switch"],
+  "homeassistant": "2023.1.0",
+  "iot_class": "local_polling",
+  "render_readme": true,
+  "zip_release": false
+}

@@ -27,6 +27,7 @@ from .const import (
     DEFAULT_RESTORE_STATE,
 )
 from .hub import WaveshareRelayHub
+from .coordinator import WaveshareRelayCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
@@ -124,8 +125,22 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Waveshare Relay from a config entry."""
     hub = await WaveshareRelayHub.create(entry.data, hass)
+    
+    # Create coordinator for this hub
+    coordinator = WaveshareRelayCoordinator(
+        hass, 
+        hub, 
+        poll_interval=entry.data.get("poll_interval", 30)
+    )
+    
+    # Perform initial data fetch
+    await coordinator.async_config_entry_first_refresh()
+    
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = hub
+    hass.data[DOMAIN][entry.entry_id] = {
+        "hub": hub,
+        "coordinator": coordinator,
+    }
 
     # Restore last states if enabled
     if entry.data.get(CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE):
@@ -140,6 +155,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, ["light", "switch"])
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id)
+        # Clean up coordinator if it exists
+        if "coordinator" in entry_data:
+            coordinator = entry_data["coordinator"]
+            # The coordinator will be automatically cleaned up when the entry is removed
 
     return unload_ok

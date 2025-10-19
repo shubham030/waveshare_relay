@@ -1,11 +1,154 @@
 import asyncio
 import logging
 import json
-import os
+import time
 from pathlib import Path
+from typing import Optional, Dict, Any, List
+from enum import Enum
+from dataclasses import dataclass
 from .const import CONF_LIGHTS, CONF_SWITCHES, CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+class ConnectionState(Enum):
+    """Connection state enumeration."""
+    DISCONNECTED = "disconnected"
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    FAILED = "failed"
+
+@dataclass
+class RetryConfig:
+    """Retry configuration."""
+    max_attempts: int = 3
+    base_delay: float = 1.0
+    max_delay: float = 60.0
+    backoff_factor: float = 2.0
+    jitter: bool = True
+
+@dataclass
+class CircuitBreakerConfig:
+    """Circuit breaker configuration."""
+    failure_threshold: int = 5
+    recovery_timeout: float = 30.0
+    half_open_max_calls: int = 3
+
+class ConnectionManager:
+    """Manages TCP connection with retry logic and circuit breaker pattern."""
+    
+    def __init__(self, host: str, port: int, timeout: float = 5.0):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.state = ConnectionState.DISCONNECTED
+        self._connection_lock = asyncio.Lock()
+        self._failure_count = 0
+        self._last_failure_time = 0
+        self._circuit_breaker_open = False
+        self._half_open_calls = 0
+        
+        # Configuration
+        self.retry_config = RetryConfig()
+        self.circuit_breaker_config = CircuitBreakerConfig()
+        
+    async def _is_circuit_breaker_open(self) -> bool:
+        """Check if circuit breaker is open."""
+        if not self._circuit_breaker_open:
+            return False
+            
+        # Check if we should attempt to close the circuit breaker
+        if (time.time() - self._last_failure_time) > self.circuit_breaker_config.recovery_timeout:
+            self._circuit_breaker_open = False
+            self._half_open_calls = 0
+            _LOGGER.info("Circuit breaker entering half-open state")
+            return False
+            
+        return True
+        
+    async def _record_success(self):
+        """Record a successful operation."""
+        self._failure_count = 0
+        if self._circuit_breaker_open:
+            self._circuit_breaker_open = False
+            _LOGGER.info("Circuit breaker closed after successful operation")
+            
+    async def _record_failure(self):
+        """Record a failed operation."""
+        self._failure_count += 1
+        self._last_failure_time = time.time()
+        
+        if self._failure_count >= self.circuit_breaker_config.failure_threshold:
+            self._circuit_breaker_open = True
+            _LOGGER.warning(f"Circuit breaker opened after {self._failure_count} failures")
+            
+    async def send_command_with_retry(self, command: bytes) -> Optional[bytes]:
+        """Send command with retry logic and circuit breaker."""
+        if await self._is_circuit_breaker_open():
+            _LOGGER.warning("Circuit breaker is open, skipping command")
+            return None
+            
+        last_exception = None
+        
+        for attempt in range(self.retry_config.max_attempts):
+            try:
+                async with self._connection_lock:
+                    result = await self._send_command_single(command)
+                    await self._record_success()
+                    return result
+                    
+            except Exception as e:
+                last_exception = e
+                _LOGGER.warning(f"Command attempt {attempt + 1} failed: {e}")
+                
+                if attempt < self.retry_config.max_attempts - 1:
+                    delay = min(
+                        self.retry_config.base_delay * (self.retry_config.backoff_factor ** attempt),
+                        self.retry_config.max_delay
+                    )
+                    if self.retry_config.jitter:
+                        delay *= (0.5 + 0.5 * time.time() % 1)  # Add jitter
+                    await asyncio.sleep(delay)
+                    
+        await self._record_failure()
+        _LOGGER.error(f"All {self.retry_config.max_attempts} attempts failed. Last error: {last_exception}")
+        return None
+        
+    async def _send_command_single(self, command: bytes) -> bytes:
+        """Send a single command over TCP."""
+        self.state = ConnectionState.CONNECTING
+        writer = None
+        
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(self.host, self.port), 
+                timeout=self.timeout
+            )
+            
+            self.state = ConnectionState.CONNECTED
+            writer.write(command)
+            await writer.drain()
+            
+            response = await asyncio.wait_for(
+                reader.read(1024), 
+                timeout=self.timeout
+            )
+            
+            return response
+            
+        except asyncio.TimeoutError as e:
+            self.state = ConnectionState.FAILED
+            raise ConnectionError(f"Timeout connecting to {self.host}:{self.port}")
+        except Exception as e:
+            self.state = ConnectionState.FAILED
+            raise ConnectionError(f"Failed to communicate with {self.host}:{self.port}: {e}")
+        finally:
+            if writer:
+                try:
+                    writer.close()
+                    await writer.wait_closed()
+                except Exception as e:
+                    _LOGGER.debug(f"Error closing connection: {e}")
+            self.state = ConnectionState.DISCONNECTED
 
 class WaveshareRelayHub:
     """Hub to manage all the Waveshare Relays."""
@@ -21,8 +164,12 @@ class WaveshareRelayHub:
         self._num_relays = config.get("num_relays", 32)  # Default to 32 if not specified
         self._relay_states = [False] * self._num_relays
         self._lock = asyncio.Lock()
-        self._timer = None
         self._byte_size = (self._num_relays + 7) // 8
+        
+        # Connection management
+        self._connection_manager = ConnectionManager(self._host, self._port, self._timeout)
+        self._last_successful_communication = 0
+        self._is_available = True
         
         # Last state configuration
         self._restore_state = config.get(CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE)
@@ -32,6 +179,14 @@ class WaveshareRelayHub:
         
         # Track which relays are actually configured
         self._configured_relays = self._get_configured_relays(config)
+        
+        # Performance monitoring
+        self._command_stats = {
+            "total_commands": 0,
+            "successful_commands": 0,
+            "failed_commands": 0,
+            "average_response_time": 0.0
+        }
         
         _LOGGER.debug(
             "Initialized WaveshareRelayHub: host=%s, port=%s, num_relays=%s, configured_relays=%s, restore_state=%s",
@@ -190,24 +345,65 @@ class WaveshareRelayHub:
         return response
 
     async def send_command(self, command):
-        """Handle the TCP connection to the relay hub with timeout."""
+        """Handle the TCP connection to the relay hub with timeout and retry logic."""
+        start_time = time.time()
+        
         try:
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(self._host, self._port), timeout=self._timeout
-            )
-            writer.write(command)
-            await writer.drain()
-
-            # Read response with timeout
-            response = await asyncio.wait_for(reader.read(1024), timeout=self._timeout)
+            response = await self._connection_manager.send_command_with_retry(command)
+            
+            # Update statistics
+            end_time = time.time()
+            response_time = end_time - start_time
+            self._update_command_stats(success=response is not None, response_time=response_time)
+            
+            if response:
+                self._last_successful_communication = end_time
+                self._is_available = True
+            else:
+                self._is_available = False
+                
             return response
-        except (asyncio.TimeoutError, ConnectionError) as err:
+            
+        except Exception as err:
+            self._update_command_stats(success=False, response_time=time.time() - start_time)
+            self._is_available = False
             _LOGGER.error("Failed to communicate with device: %s", err)
             return None
-        finally:
-            if 'writer' in locals():
-                writer.close()
-                await writer.wait_closed()
+
+    def _update_command_stats(self, success: bool, response_time: float):
+        """Update command statistics."""
+        self._command_stats["total_commands"] += 1
+        
+        if success:
+            self._command_stats["successful_commands"] += 1
+        else:
+            self._command_stats["failed_commands"] += 1
+            
+        # Update average response time
+        total = self._command_stats["total_commands"]
+        current_avg = self._command_stats["average_response_time"]
+        self._command_stats["average_response_time"] = (
+            (current_avg * (total - 1) + response_time) / total
+        )
+
+    @property
+    def is_available(self) -> bool:
+        """Return if the hub is available."""
+        return self._is_available and (
+            time.time() - self._last_successful_communication < 300  # 5 minutes
+        )
+
+    @property
+    def connection_stats(self) -> Dict[str, Any]:
+        """Return connection statistics."""
+        return {
+            "connection_state": self._connection_manager.state.value,
+            "is_available": self.is_available,
+            "last_successful_communication": self._last_successful_communication,
+            "command_stats": self._command_stats.copy(),
+            "circuit_breaker_open": self._connection_manager._circuit_breaker_open,
+            "failure_count": self._connection_manager._failure_count,
+        }
 
     async def read_relay_status(self):
         """Read the status of all relays, fully reversing the byte and bit order."""

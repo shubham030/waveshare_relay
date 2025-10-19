@@ -1,4 +1,6 @@
-# Local Home Assistant Configuration for Testing Waveshare Relay Integration
+# Real Hardware Configuration for Waveshare Relay Testing
+# Use this when testing with actual relay device
+
 default_config:
 
 # Enable logging for debugging
@@ -8,7 +10,7 @@ logger:
     custom_components.waveshare_relay: debug
     waveshare_relay: debug
 
-# Test configuration for waveshare relay
+# Real hardware configuration for waveshare relay
 waveshare_relay:
   - name: "Common Room Relay Hub"
     host: "192.168.68.200"
