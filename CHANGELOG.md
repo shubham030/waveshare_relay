@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-01-XX
+
+### 🔧 Fixed - Entity Lifecycle & State Persistence
+
+This release focuses on fixing critical issues with entities not appearing after restarts, duplicate entities, and state persistence.
+
+### ✨ Added
+
+- **CoordinatorEntity Support**: Entities now properly inherit from `CoordinatorEntity` for better HA integration
+- **RestoreEntity Support**: Native Home Assistant state restoration using `RestoreEntity` mixin
+- **Device Registry**: Entities are now properly linked to devices via `device_info` property
+- **Config Entry Migration**: Automatic migration of config entries from v1 to v2
+- **ColorMode Support**: Light entities now properly declare `ColorMode.ONOFF`
+- **Options Update Listener**: Integration now automatically reloads when options are changed
+- **HACS Validation Workflow**: Added GitHub Actions workflow for HACS validation
+- **Hassfest Validation Workflow**: Added GitHub Actions workflow for manifest validation
+
+### 🐛 Fixed
+
+- **Entities Missing After Restart**: Fixed entities not appearing by implementing proper entity lifecycle with `CoordinatorEntity`
+- **Duplicate Entities**: Fixed duplicate entities by including host/port in unique_id and adding proper `device_info`
+- **State Not Persisting**: Replaced custom file-based state persistence with native HA `RestoreEntity`
+- **Initial Availability**: Fixed hub showing as unavailable immediately after setup by initializing `_last_successful_communication` to current time
+- **HACS Configuration**: Fixed `content_in_root` setting in hacs.json (was `false`, should be `true`)
+- **README Badge Links**: Fixed broken badge reference links
+
+### 📊 Technical Improvements
+
+- **Entity Base Classes**: `WaveshareRelaySwitch` and `WaveshareRelayLight` now inherit from `CoordinatorEntity, RestoreEntity`
+- **Proper `should_poll`**: Entities return `False` when using coordinator (coordinator handles polling)
+- **Lifecycle Methods**: Implemented `async_added_to_hass()` and `async_will_remove_from_hass()`
+- **Coordinator Update Handler**: Added `_handle_coordinator_update()` callback method
+- **Config Entry Version**: Bumped config entry version to 2 with migration support
+- **Integration Type**: Added `integration_type: hub` to manifest.json
+
+### 📚 Documentation
+
+- Fixed README badge links
+- Updated info.md for better HACS display
+- Improved code documentation
+
 ## [2.0.0] - 2024-12-19
 
 ### 🚀 Major Release - Production-Ready Improvements

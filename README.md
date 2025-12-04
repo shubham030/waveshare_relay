@@ -1,78 +1,76 @@
-# Waveshare Relay Hub for Home Assistant
+<p align="center">
+  <img src="images/logo.svg" alt="Waveshare Relay Hub" width="180"/>
+</p>
 
-[![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
-[![hacs][hacs-shield]][hacs]
-[![Community Forum][forum-shield]][forum]
+<h1 align="center">Waveshare Relay Hub for Home Assistant</h1>
 
-**Production-ready Home Assistant integration for Waveshare Relay modules via RS485 TO ETH (B) gateway.**
+<p align="center">
+  <a href="https://github.com/shubham030/waveshare_relay/releases"><img src="https://img.shields.io/github/release/shubham030/waveshare_relay.svg?style=for-the-badge" alt="Release"></a>
+  <a href="https://github.com/shubham030/waveshare_relay/blob/main/LICENSE"><img src="https://img.shields.io/github/license/shubham030/waveshare_relay.svg?style=for-the-badge" alt="License"></a>
+  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge" alt="HACS"></a>
+</p>
 
-This custom component provides reliable control of Waveshare 32-channel relay modules through the Waveshare RS485 TO ETH (B) TCP server. Perfect for industrial automation, home automation, and IoT projects requiring robust relay control.
+<p align="center">
+  <strong>Production-ready Home Assistant integration for <a href="https://www.waveshare.com/">Waveshare</a> Modbus RTU Relay modules via RS485 TO ETH (B) gateway.</strong>
+</p>
+
+---
 
 ## ✨ Features
 
-- 🔄 **Robust Connection Management**: Automatic retry logic with exponential backoff
-- ⚡ **Circuit Breaker Pattern**: Prevents system overload during failures  
-- 📊 **Performance Monitoring**: Real-time statistics and diagnostics
-- 🎯 **Smart Polling**: Adaptive polling intervals based on network conditions
-- 🔍 **State Verification**: Ensures commands actually succeeded
-- 🏠 **Full HA Integration**: Native lights and switches with all features
-- ⚙️ **Highly Configurable**: Tune retry behavior, timeouts, and polling
-- 🔧 **Production Ready**: Extensively tested for reliability
+| Feature | Description |
+|---------|-------------|
+| 🔄 **Robust Connection** | Automatic retry logic with exponential backoff |
+| ⚡ **Circuit Breaker** | Prevents system overload during failures |
+| 📊 **Smart Polling** | Adaptive polling intervals based on network conditions |
+| 🔍 **State Verification** | Ensures commands actually succeeded |
+| 💾 **State Persistence** | Restores relay states after HA restart |
+| 🏠 **Device Registry** | Proper HA device integration |
+| ⚙️ **Config Flow** | Easy setup via Home Assistant UI |
+| 🔧 **YAML Support** | Advanced configuration via YAML |
 
-## 🛠 Hardware Requirements
+## 🛠 Supported Hardware
 
-- **Waveshare RS485 TO ETH (B)** or **RS485 TO POE ETH (B)** gateway
-- **Waveshare Modbus RTU Relay** (8CH, 16CH, or 32CH)
-- Network connection between Home Assistant and the gateway
+> All products available at [waveshare.com](https://www.waveshare.com/)
 
-### Supported Hardware
-
-| Component | Model | Notes |
-|-----------|-------|-------|
-| Gateway | RS485 TO ETH (B) | TCP server mode |
-| Gateway | RS485 TO POE ETH (B) | PoE powered version |
-| Relay | Modbus RTU Relay 8CH | 8 relay channels |
-| Relay | Modbus RTU Relay 16CH | 16 relay channels |
-| Relay | Modbus RTU Relay 32CH | 32 relay channels |
+| Component | Model | Product Link |
+|-----------|-------|--------------|
+| **Gateway** | RS485 TO ETH (B) | [Product Page](https://www.waveshare.com/rs485-to-eth-b.htm) |
+| **Gateway** | RS485 TO POE ETH (B) | [Product Page](https://www.waveshare.com/rs485-to-poe-eth-b.htm) |
+| **Relay** | Modbus RTU Relay 8CH | [Product Page](https://www.waveshare.com/modbus-rtu-relay-8ch.htm) |
+| **Relay** | Modbus RTU Relay 16CH | [Product Page](https://www.waveshare.com/modbus-rtu-relay-16ch.htm) |
+| **Relay** | Modbus RTU Relay 32CH | [Product Page](https://www.waveshare.com/modbus-rtu-relay-32ch.htm) |
 
 ## 📦 Installation
 
 ### Option 1: HACS (Recommended)
 
-1. **Add Custom Repository**:
-   - Open HACS in Home Assistant
-   - Go to "Integrations"
-   - Click the three dots menu → "Custom repositories"
-   - Add repository URL: `https://github.com/shubham030/waveshare_relay`
-   - Category: "Integration"
-   - Click "Add"
-
-2. **Install Integration**:
-   - Search for "Waveshare Relay Hub"
-   - Click "Download"
-   - Restart Home Assistant
-
-3. **Add Integration**:
-   - Go to Settings → Devices & Services
-   - Click "Add Integration"
-   - Search for "Waveshare Relay Hub"
-   - Follow the configuration steps
+1. Open HACS in Home Assistant
+2. Click **⋮** → **Custom repositories**
+3. Add `https://github.com/shubham030/waveshare_relay` as **Integration**
+4. Search for "Waveshare Relay Hub" and install
+5. Restart Home Assistant
+6. Go to **Settings** → **Devices & Services** → **Add Integration**
 
 ### Option 2: Manual Installation
 
-1. **Download Files**:
-   ```bash
-   cd /config/custom_components/
-   git clone https://github.com/shubham030/waveshare_relay.git
-   ```
+```bash
+cd /config/custom_components/
+git clone https://github.com/shubham030/waveshare_relay.git
+```
 
-2. **Restart Home Assistant**
+Restart Home Assistant.
 
-3. **Add Integration** via UI or YAML configuration
+## ⚙️ Configuration
 
-### YAML Configuration
+### Via UI (Recommended)
+
+1. Go to **Settings** → **Devices & Services**
+2. Click **Add Integration**
+3. Search for "Waveshare Relay Hub"
+4. Enter your device details
+
+### Via YAML
 
 ```yaml
 waveshare_relay:
@@ -82,10 +80,11 @@ waveshare_relay:
     device_address: 1
     timeout: 5
     num_relays: 32
+    restore_state: true
     lights:
-      - name: "Living Room Light 1"
+      - name: "Ceiling Light"
         address: 1
-      - name: "Living Room Light 2"
+      - name: "Wall Light"
         address: 2
     switches:
       - name: "Fan"
@@ -94,142 +93,22 @@ waveshare_relay:
         address: 4
 ```
 
-### Config Flow
-
-1. Go to **Settings** → **Devices & Services**
-2. Click **Add Integration**
-3. Search for "Waveshare Relay Hub"
-4. Enter your device details
-5. Configure your entities
-
-## Configuration Options
+### Configuration Options
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `host` | Yes | - | IP address of the relay device |
-| `port` | No | 502 | TCP port for Modbus communication |
-| `name` | Yes | - | Name for this relay hub |
-| `device_address` | No | 1 | Modbus device address |
-| `timeout` | No | 5 | Connection timeout in seconds |
-| `num_relays` | No | 32 | Number of relays (1-32) |
-| `lights` | No | [] | List of light entities |
-| `switches` | No | [] | List of switch entities |
+| `host` | ✅ | - | IP address of RS485 gateway |
+| `port` | ❌ | 502 | TCP port |
+| `name` | ✅ | - | Friendly name for this hub |
+| `device_address` | ❌ | 1 | Modbus device address (1-255) |
+| `timeout` | ❌ | 5 | Connection timeout (seconds) |
+| `num_relays` | ❌ | 32 | Number of relays (8/16/32) |
+| `restore_state` | ❌ | true | Restore states on restart |
+| `poll_interval` | ❌ | 30 | Polling interval (seconds) |
 
-## Testing
+## 🔍 Troubleshooting
 
-### Python 3.11 Setup (Recommended)
-
-For optimal compatibility with Home Assistant, we recommend using Python 3.11 for testing and development.
-
-#### Quick Start
-
-1. **Create Python 3.11 virtual environment:**
-   ```bash
-   python3.11 -m venv test_env_py311
-   test_env_py311/bin/pip install -r requirements-test.txt
-   ```
-
-2. **Run tests with Python 3.11:**
-   ```bash
-   # Using the convenience script
-   ./run_tests_py311.sh
-   
-   # Or directly
-   test_env_py311/bin/python -m pytest tests/ -v
-   ```
-
-3. **Run with coverage:**
-   ```bash
-   test_env_py311/bin/python -m pytest tests/ --cov=waveshare_relay --cov-report=html
-   ```
-
-#### Alternative: Python 3.13
-
-If you prefer to use Python 3.13:
-
-1. **Create Python 3.13 virtual environment:**
-   ```bash
-   python3.13 -m venv test_env
-   test_env/bin/pip install -r requirements-test.txt
-   ```
-
-2. **Run tests:**
-   ```bash
-   test_env/bin/python -m pytest tests/ -v
-   ```
-
-### Test Categories
-
-Run specific test categories:
-```bash
-# Unit tests only
-pytest -m unit
-
-# Integration tests only
-pytest -m integration
-
-# Async tests only
-pytest -m asyncio
-```
-
-### Test Coverage
-
-Current test coverage: **97%**
-
-- **Core Components**: 99-100% coverage
-- **Hub Communication**: 100% coverage
-- **Entity Management**: 99% coverage
-- **Integration Tests**: 100% coverage
-
-### Test Structure
-
-- `tests/test_hub.py` - Tests for the hub communication layer
-- `tests/test_switch.py` - Tests for switch entities
-- `tests/test_light.py` - Tests for light entities
-- `tests/test_coordinator.py` - Tests for the coordinator
-- `tests/test_integration.py` - Integration and end-to-end tests
-
-### Test Coverage
-
-The test suite covers:
-- ✅ Hub initialization and configuration
-- ✅ TCP communication and error handling
-- ✅ Modbus protocol implementation
-- ✅ Relay state management
-- ✅ Entity creation and configuration
-- ✅ Switch and light functionality
-- ✅ State updates and synchronization
-- ✅ Error scenarios and edge cases
-- ✅ Integration workflows
-
-## Development
-
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use type hints where appropriate
-- Add docstrings for all functions and classes
-- Use meaningful variable and function names
-
-### Adding New Features
-
-1. Create feature branch
-2. Implement feature with tests
-3. Ensure all tests pass
-4. Update documentation
-5. Submit pull request
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Connection Timeout**: Check device IP and network connectivity
-2. **Invalid Response**: Verify device address and Modbus settings
-3. **State Not Updating**: Check relay configuration and addresses
-
-### Debug Logging
-
-Enable debug logging in your `configuration.yaml`:
+### Enable Debug Logging
 
 ```yaml
 logger:
@@ -238,21 +117,51 @@ logger:
     custom_components.waveshare_relay: debug
 ```
 
-## Contributing
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| Connection timeout | Check device IP and network connectivity |
+| Invalid response | Verify device address and Modbus settings |
+| State not updating | Check relay configuration and addresses |
+| Entities missing | Ensure `address` values are within `num_relays` |
+
+## 🧪 Development
+
+```bash
+# Create virtual environment
+python3.11 -m venv test_env
+source test_env/bin/activate
+pip install -r requirements-test.txt
+
+# Run tests
+pytest tests/ -v
+```
+
+**Test Coverage: 97%**
+
+## 📚 Documentation
+
+- [Configuration Guide](docs/configuration.md)
+- [Troubleshooting Guide](docs/troubleshooting.md)
+- [HACS Setup](docs/hacs-setup.md)
+- [Waveshare Wiki](https://www.waveshare.com/wiki/Modbus_RTU_Relay)
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+3. Make your changes with tests
+4. Submit a pull request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
-## Support
+## 🔗 Links
 
-- **Documentation**: [Waveshare Wiki](https://www.waveshare.com/wiki/Modbus_RTU_Relay_32CH)
-- **Issues**: [GitHub Issues](https://github.com/shubham030/waveshare_rtu_relay/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/shubham030/waveshare_rtu_relay/discussions) 
+- [GitHub Repository](https://github.com/shubham030/waveshare_relay)
+- [Issue Tracker](https://github.com/shubham030/waveshare_relay/issues)
+- [Waveshare Official Site](https://www.waveshare.com/)
+- [Waveshare Wiki](https://www.waveshare.com/wiki/Main_Page)
+- [Home Assistant Community](https://community.home-assistant.io/)

@@ -30,7 +30,11 @@ from .hub import WaveshareRelayHub
 from .coordinator import WaveshareRelayCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
+
+PLATFORMS = ["light", "switch"]
+
+# Config entry version - increment when making breaking changes to config schema
+CONFIG_ENTRY_VERSION = 2
 
 # YAML configuration schema for a single relay module
 RELAY_MODULE_SCHEMA = vol.Schema(
@@ -124,22 +128,33 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Waveshare Relay from a config entry."""
+    # Create the hub and ensure it's properly initialized
     hub = await WaveshareRelayHub.create(entry.data, hass)
+    
+    # Verify hub is available before proceeding
+    if not hub.is_available:
+        _LOGGER.warning(
+            "Hub at %s:%s is not responding, but will continue setup",
+            entry.data.get(CONF_HOST),
+            entry.data.get(CONF_PORT),
+        )
     
     # Create coordinator for this hub
     coordinator = WaveshareRelayCoordinator(
         hass, 
         hub, 
-        poll_interval=entry.data.get("poll_interval", 30)
+        poll_interval=entry.options.get("poll_interval", entry.data.get("poll_interval", 30))
     )
     
     # Perform initial data fetch
     await coordinator.async_config_entry_first_refresh()
     
+    # Store references for proper lifecycle management
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "hub": hub,
         "coordinator": coordinator,
+        "entry": entry,
     }
 
     # Restore last states if enabled
@@ -147,18 +162,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await hub.restore_last_states()
 
     # Forward the setup to the platforms
-    await hass.config_entries.async_forward_entry_setups(entry, ["light", "switch"])
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register update listener for options changes
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     return True
 
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["light", "switch"])
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
         # Clean up coordinator if it exists
         if "coordinator" in entry_data:
             coordinator = entry_data["coordinator"]
             # The coordinator will be automatically cleaned up when the entry is removed
+            _LOGGER.debug("Cleaned up coordinator for entry %s", entry.entry_id)
 
     return unload_ok
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate old config entry to new version.
+    
+    This is called when the config entry version is older than the current version.
+    """
+    _LOGGER.info("Migrating config entry from version %s to %s", config_entry.version, CONFIG_ENTRY_VERSION)
+    
+    if config_entry.version == 1:
+        # Version 1 -> 2: No schema changes, just update version
+        # This handles the transition to new unique_id format
+        new_data = {**config_entry.data}
+        
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=new_data,
+            version=CONFIG_ENTRY_VERSION,
+        )
+        _LOGGER.info("Migration to version %s successful", CONFIG_ENTRY_VERSION)
+    
+    return True

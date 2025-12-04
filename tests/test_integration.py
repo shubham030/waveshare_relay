@@ -148,11 +148,16 @@ class TestIntegration:
         """Test config entry setup."""
         mock_entry = MagicMock()
         mock_entry.entry_id = "test_entry_id"
-        mock_entry.data = config_entry_data
+        mock_entry.data = {**config_entry_data, "poll_interval": 30}
+        mock_entry.options = {}
         
         with patch('waveshare_relay.WaveshareRelayHub.create', new_callable=AsyncMock) as mock_create:
             mock_hub = MagicMock()
+            mock_hub._host = "192.168.1.100"
             mock_hub.restore_last_states = AsyncMock()
+            mock_hub.read_relay_status = AsyncMock(return_value=[False] * 32)
+            mock_hub.is_available = True
+            mock_hub.connection_stats = {}
             mock_create.return_value = mock_hub
             # Ensure the mock is called with hass parameter and returns awaitable
             async def mock_create_func(config, hass=None):
@@ -164,7 +169,9 @@ class TestIntegration:
             assert result is True
             assert DOMAIN in mock_hass.data
             assert "test_entry_id" in mock_hass.data[DOMAIN]
-            assert mock_hass.data[DOMAIN]["test_entry_id"] == mock_hub
+            # Hub is now stored in a dict with coordinator
+            assert "hub" in mock_hass.data[DOMAIN]["test_entry_id"]
+            assert mock_hass.data[DOMAIN]["test_entry_id"]["hub"] == mock_hub
             
             # Check that platforms were forwarded
             mock_hass.config_entries.async_forward_entry_setups.assert_called_once_with(

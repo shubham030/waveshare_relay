@@ -78,11 +78,10 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     }
 
 
-class ConfigFlow(config_entries.ConfigFlow):
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Waveshare Relay Hub."""
 
-    VERSION = 1
-    DOMAIN = DOMAIN
+    VERSION = 2
     
     def __init__(self):
         """Initialize the config flow."""

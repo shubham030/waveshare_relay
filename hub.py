@@ -168,7 +168,8 @@ class WaveshareRelayHub:
         
         # Connection management
         self._connection_manager = ConnectionManager(self._host, self._port, self._timeout)
-        self._last_successful_communication = 0
+        # Initialize to current time to avoid false unavailability at startup
+        self._last_successful_communication = time.time()
         self._is_available = True
         
         # Last state configuration
@@ -215,7 +216,15 @@ class WaveshareRelayHub:
     async def create(cls, config, hass=None):
         """Alternative constructor to ensure initialization finishes before returning."""
         self = cls(config, hass)
-        await self.read_relay_status()
+        result = await self.read_relay_status()
+        # Update last successful communication time after successful initial read
+        if result is not None:
+            self._last_successful_communication = time.time()
+            self._is_available = True
+            _LOGGER.debug("Hub initialized successfully, marked as available")
+        else:
+            _LOGGER.warning("Hub initialization failed, marked as unavailable")
+            self._is_available = False
         return self
 
     async def _load_last_states(self):
@@ -388,10 +397,25 @@ class WaveshareRelayHub:
 
     @property
     def is_available(self) -> bool:
-        """Return if the hub is available."""
-        return self._is_available and (
-            time.time() - self._last_successful_communication < 300  # 5 minutes
-        )
+        """Return if the hub is available.
+        
+        Only mark as unavailable after actual communication failures,
+        not based on time since last communication alone.
+        """
+        # If we've never had a successful communication (initial state),
+        # rely on the _is_available flag set during initialization
+        if self._last_successful_communication == 0:
+            return self._is_available
+        
+        # After initialization, check both the flag and the timeout
+        time_since_last_success = time.time() - self._last_successful_communication
+        
+        # Only consider unavailable if explicitly marked AND timeout exceeded
+        if not self._is_available and time_since_last_success > 300:  # 5 minutes
+            return False
+        
+        # Available if flag is set or we've communicated recently
+        return self._is_available or time_since_last_success < 300
 
     @property
     def connection_stats(self) -> Dict[str, Any]:

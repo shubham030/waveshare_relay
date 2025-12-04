@@ -19,6 +19,7 @@ class TestWaveshareRelayCoordinator:
     def mock_hub(self):
         """Create a mock hub."""
         hub = MagicMock()
+        hub._host = "192.168.1.100"
         hub._relay_states = [False] * 32
         hub.read_relay_status = AsyncMock(return_value=[False] * 32)
         return hub
@@ -46,12 +47,17 @@ class TestWaveshareRelayCoordinator:
     @pytest.mark.asyncio
     async def test_async_update_data_success(self, coordinator, mock_hub):
         """Test successful data update."""
-        mock_hub._relay_states = [True, False, True, False] + [False] * 28
+        test_states = [True, False, True, False] + [False] * 28
+        mock_hub.read_relay_status = AsyncMock(return_value=test_states)
+        mock_hub.is_available = True
+        mock_hub.connection_stats = {}
         
         result = await coordinator._async_update_data()
         
         mock_hub.read_relay_status.assert_called_once()
-        assert result == [True, False, True, False] + [False] * 28
+        assert isinstance(result, dict)
+        assert "relay_states" in result
+        assert result["relay_states"] == test_states
 
     @pytest.mark.asyncio
     async def test_async_update_data_failure(self, coordinator, mock_hub):
@@ -100,7 +106,7 @@ class TestWaveshareRelayCoordinator:
             poll_interval=30
         )
         
-        assert coordinator.name == "Waveshare Relay Hub"
+        assert coordinator.name == "Waveshare Relay Hub 192.168.1.100"
 
     @pytest.mark.asyncio
     async def test_coordinator_with_different_poll_intervals(self, mock_hass, mock_hub):
@@ -127,15 +133,20 @@ class TestWaveshareRelayCoordinator:
         
         # Set up mock data
         test_data = [True, False, True, False] + [False] * 28
-        mock_hub._relay_states = test_data
+        mock_hub.read_relay_status = AsyncMock(return_value=test_data)
+        mock_hub.is_available = True
+        mock_hub.connection_stats = {}
         
         # Get data multiple times
         result1 = await coordinator._async_update_data()
         result2 = await coordinator._async_update_data()
         
-        assert result1 == test_data
-        assert result2 == test_data
-        assert result1 == result2
+        assert isinstance(result1, dict)
+        assert isinstance(result2, dict)
+        assert result1["relay_states"] == test_data
+        assert result2["relay_states"] == test_data
+        # Results may differ in last_update timestamp, just compare relay_states
+        assert result1["relay_states"] == result2["relay_states"]
 
     @pytest.mark.asyncio
     async def test_coordinator_error_handling(self, mock_hass, mock_hub):

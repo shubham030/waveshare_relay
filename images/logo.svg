@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#65ae00;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4a8200;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle with Waveshare green -->
+  <circle cx="128" cy="128" r="120" fill="url(#bgGrad)"/>
+  
+  <!-- Relay board representation -->
+  <rect x="48" y="68" width="160" height="120" rx="10" fill="#1a1a1a" stroke="#333" stroke-width="2"/>
+  
+  <!-- Relay modules grid (4x2) -->
+  <!-- Row 1 -->
+  <rect x="58" y="78" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  <rect x="95" y="78" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  <rect x="132" y="78" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  <rect x="169" y="78" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  
+  <!-- Row 2 -->
+  <rect x="58" y="128" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  <rect x="95" y="128" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  <rect x="132" y="128" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  <rect x="169" y="128" width="32" height="42" rx="4" fill="#2d2d2d" stroke="#444" stroke-width="1"/>
+  
+  <!-- LED indicators - some ON (green), some OFF -->
+  <circle cx="74" cy="88" r="5" fill="#65ae00"/>
+  <circle cx="111" cy="88" r="5" fill="#65ae00"/>
+  <circle cx="148" cy="88" r="5" fill="#333"/>
+  <circle cx="185" cy="88" r="5" fill="#65ae00"/>
+  
+  <circle cx="74" cy="138" r="5" fill="#333"/>
+  <circle cx="111" cy="138" r="5" fill="#65ae00"/>
+  <circle cx="148" cy="138" r="5" fill="#333"/>
+  <circle cx="185" cy="138" r="5" fill="#333"/>
+  
+  <!-- Relay contact symbols -->
+  <path d="M68 105 L80 105 M68 115 L80 115 M74 105 L74 110 L78 110" stroke="#888" stroke-width="1.5" fill="none"/>
+  <path d="M105 105 L117 105 M105 115 L117 115 M111 105 L111 110 L115 110" stroke="#888" stroke-width="1.5" fill="none"/>
+  <path d="M142 105 L154 105 M142 115 L154 115 M148 105 L148 112" stroke="#888" stroke-width="1.5" fill="none"/>
+  <path d="M179 105 L191 105 M179 115 L191 115 M185 105 L185 110 L189 110" stroke="#888" stroke-width="1.5" fill="none"/>
+  
+  <path d="M68 155 L80 155 M68 165 L80 165 M74 155 L74 162" stroke="#888" stroke-width="1.5" fill="none"/>
+  <path d="M105 155 L117 155 M105 165 L117 165 M111 155 L111 160 L115 160" stroke="#888" stroke-width="1.5" fill="none"/>
+  <path d="M142 155 L154 155 M142 165 L154 165 M148 155 L148 162" stroke="#888" stroke-width="1.5" fill="none"/>
+  <path d="M179 155 L191 155 M179 165 L191 165 M185 155 L185 162" stroke="#888" stroke-width="1.5" fill="none"/>
+  
+  <!-- Terminal block at bottom -->
+  <rect x="58" y="178" width="143" height="8" rx="2" fill="#333"/>
+  
+  <!-- Screw terminals -->
+  <circle cx="68" cy="182" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
+  <circle cx="88" cy="182" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
+  <circle cx="108" cy="182" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
+  <circle cx="128" cy="182" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
+  <circle cx="148" cy="182" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
+  <circle cx="168" cy="182" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
+  <circle cx="188" cy="182" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
+  
+  <!-- Home Assistant style house icon in corner -->
+  <circle cx="200" cy="56" r="22" fill="white" opacity="0.95"/>
+  <path d="M200 42 L185 54 L188 54 L188 68 L196 68 L196 60 L204 60 L204 68 L212 68 L212 54 L215 54 Z" fill="#65ae00"/>
+</svg>

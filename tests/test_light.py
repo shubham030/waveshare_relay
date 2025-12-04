@@ -85,8 +85,10 @@ class TestWaveshareRelayLight:
         with patch.object(light, 'async_write_ha_state') as mock_write:
             await light.async_turn_on()
             
-            mock_hub.set_relay_state.assert_called_once_with(1, True)
-            assert light._attr_is_on is True  # State should still be updated
+            # Retry logic causes 3 attempts
+            assert mock_hub.set_relay_state.call_count == 3
+            # State should NOT be updated on failure
+            assert light._attr_is_on is False
             mock_write.assert_called_once()
 
     @pytest.mark.asyncio
