@@ -4,29 +4,32 @@
 
 # Waveshare Relay Hub
 
-**Production-ready Home Assistant integration for [Waveshare](https://www.waveshare.com/) Modbus RTU Relay modules.**
+**Production-ready Home Assistant integration for [Waveshare](https://www.waveshare.com/) Modbus RTU Relay modules (8/16/32 channel) via RS485 TO ETH gateway.**
 
-## ✨ Features
+## ✨ Key Features
 
 - 🔄 **Robust Connection** - Automatic retry with exponential backoff
-- ⚡ **Circuit Breaker** - Prevents overload during failures
-- 💾 **State Persistence** - Restores states after restart
+- ⚡ **Circuit Breaker** - Prevents overload during network failures
+- 💾 **State Persistence** - Restores relay states after restart
 - 🏠 **Device Registry** - Proper HA device integration
 - ⚙️ **Config Flow** - Easy UI-based setup
+- 📊 **Smart Polling** - Adaptive intervals based on network conditions
+- 📈 **97% Test Coverage** - Production-ready reliability
 
-## 🛠 Supported Hardware
+## 🛠️ Supported Hardware
 
-| Gateway | Relay Modules |
-|---------|---------------|
-| RS485 TO ETH (B) | 8CH / 16CH / 32CH |
-| RS485 TO POE ETH (B) | Modbus RTU Relay |
+| Gateways | Relay Modules |
+|----------|---------------|
+| RS485 TO ETH (B) | Modbus RTU Relay 8CH |
+| RS485 TO POE ETH (B) | Modbus RTU Relay 16CH |
+| | Modbus RTU Relay 32CH |
 
 ## ⚙️ Quick Setup
 
 ### Via UI
 1. **Settings** → **Devices & Services** → **Add Integration**
-2. Search for "Waveshare Relay Hub"
-3. Enter your device IP and configure relays
+2. Search for **"Waveshare Relay Hub"**
+3. Enter your gateway IP and configure relays
 
 ### Via YAML
 ```yaml
@@ -42,8 +45,14 @@ waveshare_relay:
         address: 2
 ```
 
-## 📚 More Info
+## 📚 Resources
 
 - [Full Documentation](https://github.com/shubham030/waveshare_relay)
+- [Configuration Guide](https://github.com/shubham030/waveshare_relay/blob/main/docs/configuration.md)
+- [Troubleshooting](https://github.com/shubham030/waveshare_relay/blob/main/docs/troubleshooting.md)
 - [Waveshare Official](https://www.waveshare.com/)
 - [Product Wiki](https://www.waveshare.com/wiki/Modbus_RTU_Relay)
+
+## 🆘 Support
+
+[GitHub Issues](https://github.com/shubham030/waveshare_relay/issues) | [Discussions](https://github.com/shubham030/waveshare_relay/discussions)
