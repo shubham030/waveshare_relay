@@ -39,10 +39,10 @@ async def async_setup_platform(
     # Add switches
     for switch_config in config.get(CONF_SWITCHES, []):
         _LOGGER.debug("Adding switch entity: %s", switch_config[CONF_NAME])
-        # Use the relay name from the parent config
-        relay_name = config[CONF_NAME]
-        # Include host and port in unique_id to prevent collisions
-        unique_id = f"{hub._host}_{hub._port}_{relay_name}_{switch_config[CONF_NAME].lower().replace(' ', '_')}"
+        # Use address-based unique_id for stability across config changes
+        # Format: {host}_{port}_{device_address}_{relay_address}_switch
+        device_address = config.get("device_address", 1)
+        unique_id = f"{hub._host}_{hub._port}_{device_address}_{switch_config[CONF_ADDRESS]}_switch"
         _LOGGER.debug("Generated unique_id: %s", unique_id)
         entities.append(
             WaveshareRelaySwitch(
@@ -78,10 +78,10 @@ async def async_setup_entry(
     # Add switches
     for switch_config in config.get(CONF_SWITCHES, []):
         _LOGGER.debug("Adding switch entity: %s", switch_config[CONF_NAME])
-        # Use the relay name from the parent config
-        relay_name = config[CONF_NAME]
-        # Include host and port in unique_id to prevent collisions
-        unique_id = f"{hub._host}_{hub._port}_{relay_name}_{switch_config[CONF_NAME].lower().replace(' ', '_')}"
+        # Use address-based unique_id for stability across config changes
+        # Format: {host}_{port}_{device_address}_{relay_address}_switch
+        device_address = config.get("device_address", 1)
+        unique_id = f"{hub._host}_{hub._port}_{device_address}_{switch_config[CONF_ADDRESS]}_switch"
         _LOGGER.debug("Generated unique_id: %s", unique_id)
         entities.append(
             WaveshareRelaySwitch(
