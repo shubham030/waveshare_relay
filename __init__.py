@@ -9,8 +9,8 @@ import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.discovery import async_load_platform
+from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+from homeassistant.helpers import device_registry as dr
 
 from .const import (
     DOMAIN,
@@ -77,50 +77,29 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
-    """Set up the Waveshare Relay component from YAML."""
+    """Set up Waveshare Relay from YAML by importing each board to a config entry.
+
+    The YAML ``waveshare_relay:`` list stays the source of truth (bulk-friendly
+    for many channels), but each board is imported into its own config entry so
+    it becomes a proper device with its lights/switches nested under it — the way
+    config-entry integrations (ESPHome, etc.) group their entities. Re-imports on
+    restart update the existing entry rather than creating duplicates.
+    """
     if DOMAIN not in config:
         return True
 
     try:
-        # Validate only our section
-        config[DOMAIN] = CONFIG_SCHEMA(config)[DOMAIN]
+        boards = CONFIG_SCHEMA(config)[DOMAIN]
     except vol.Invalid as err:
         _LOGGER.error("Invalid configuration: %s", err)
         return False
 
-    # Set up each relay hub from YAML
     hass.data.setdefault(DOMAIN, {})
-    for entry_config in config[DOMAIN]:
-        _LOGGER.debug("Setting up Waveshare Relay hub: %s", entry_config[CONF_NAME])
-        hub = await WaveshareRelayHub.create(entry_config, hass)
-        entry_id = f"{entry_config[CONF_HOST]}_{entry_config[CONF_NAME]}"
-        hass.data[DOMAIN][entry_id] = hub
-
-        # Restore last states if enabled
-        if entry_config.get(CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE):
-            await hub.restore_last_states()
-
-        # Load platforms for this hub
-        _LOGGER.debug("Loading light platform for hub: %s", entry_config[CONF_NAME])
-        _LOGGER.debug("Light platform config: %s", {"entry_id": entry_id, "config": entry_config})
+    for board in boards:
+        _LOGGER.debug("Importing Waveshare Relay board from YAML: %s", board.get(CONF_NAME))
         hass.async_create_task(
-            async_load_platform(
-                hass,
-                "light",
-                DOMAIN,
-                {"entry_id": entry_id, "config": entry_config},
-                config,
-            )
-        )
-        _LOGGER.debug("Loading switch platform for hub: %s", entry_config[CONF_NAME])
-        _LOGGER.debug("Switch platform config: %s", {"entry_id": entry_id, "config": entry_config})
-        hass.async_create_task(
-            async_load_platform(
-                hass,
-                "switch",
-                DOMAIN,
-                {"entry_id": entry_id, "config": entry_config},
-                config,
+            hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": SOURCE_IMPORT}, data=dict(board)
             )
         )
 
@@ -156,6 +135,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
         "entry": entry,
     }
+
+    # Register one device per board so all its lights/switches nest under it.
+    device_registry = dr.async_get(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{hub._host}_{hub._port}_{hub._device_address}")},
+        manufacturer="Waveshare",
+        name=f"{entry.data.get(CONF_NAME, hub._host).replace('_', ' ').title()} Relay",
+        model=f"Modbus RTU Relay ({entry.data.get('num_relays', 32)}ch)",
+    )
 
     # Restore last states if enabled
     if entry.data.get(CONF_RESTORE_STATE, DEFAULT_RESTORE_STATE):

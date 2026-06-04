@@ -125,6 +125,23 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
+    async def async_step_import(self, import_data: Dict[str, Any]) -> FlowResult:
+        """Import a relay board from YAML configuration.
+
+        Each board in the `waveshare_relay:` YAML list becomes one config entry
+        (and therefore one device). Re-imports update the existing entry's data
+        so YAML edits propagate; they never create duplicates.
+        """
+        await self.async_set_unique_id(
+            f"{import_data[CONF_HOST]}_{import_data.get(CONF_PORT, DEFAULT_PORT)}"
+            f"_{import_data.get(CONF_DEVICE_ADDRESS, DEFAULT_DEVICE_ADDRESS)}"
+        )
+        self._abort_if_unique_id_configured(updates=dict(import_data))
+        return self.async_create_entry(
+            title=import_data.get(CONF_NAME, import_data[CONF_HOST]),
+            data=dict(import_data),
+        )
+
     async def async_step_reauth(self, entry_data: Dict[str, Any]) -> FlowResult:
         """Perform reauth upon an API authentication error."""
         self._reauth_entry = self.hass.config_entries.async_get_entry(

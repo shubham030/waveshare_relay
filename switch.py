@@ -132,12 +132,11 @@ class WaveshareRelaySwitch(RestoreEntity, SwitchEntity):
 
     @property
     def device_info(self) -> dict[str, Any]:
-        """Return device information to link entity to a device."""
+        """Link the entity to its board's device (created in __init__)."""
         return {
-            "identifiers": {(DOMAIN, f"{self._hub._host}_{self._hub._port}")},
-            "name": f"Waveshare Relay {self._hub._host}",
-            "manufacturer": "Waveshare",
-            "model": "Modbus RTU Relay",
+            "identifiers": {
+                (DOMAIN, f"{self._hub._host}_{self._hub._port}_{self._hub._device_address}")
+            },
         }
 
     @property
