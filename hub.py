@@ -227,11 +227,11 @@ class WaveshareRelayHub:
             self._is_available = False
         return self
 
-    async def _load_last_states(self):
-        """Load last known states from file."""
+    async def _load_last_states(self) -> bool:
+        """Load last known states from file. Returns True if states were loaded."""
         if not self._state_file or not self._state_file.exists():
             _LOGGER.debug("No last state file found, using default states")
-            return
+            return False
             
         try:
             with open(self._state_file, 'r') as f:
@@ -244,9 +244,11 @@ class WaveshareRelayHub:
                     if relay_num in self._configured_relays and 1 <= relay_num <= self._num_relays:
                         self._relay_states[relay_num - 1] = state
                         _LOGGER.debug("Restored relay %s to state: %s", relay_num, state)
+                return True
                         
         except (json.JSONDecodeError, IOError) as e:
             _LOGGER.warning("Failed to load last states: %s", e)
+            return False
 
     async def _save_last_states(self):
         """Save current states to file."""
@@ -307,15 +309,12 @@ class WaveshareRelayHub:
             _LOGGER.debug("State restoration disabled")
             return
             
-        await self._load_last_states()
-        
-        # Check if we have any saved states to restore
-        has_saved_states = any(self._relay_states)
-        if not has_saved_states:
+        loaded = await self._load_last_states()
+        if not loaded:
             _LOGGER.debug("No saved states to restore")
             return
             
-        _LOGGER.info("Restoring last known relay states")
+        _LOGGER.info("Restoring last known relay states: %s", self._relay_states)
         
         # Send the restored states to the device
         response = await self._send_relay_states()

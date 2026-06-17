@@ -37,10 +37,10 @@ async def async_setup_platform(
     # Add lights
     for light_config in config.get(CONF_LIGHTS, []):
         _LOGGER.debug("Adding light entity: %s", light_config[CONF_NAME])
-        # Use the relay name from the parent config
-        relay_name = config[CONF_NAME]
-        # Include host and port in unique_id to prevent collisions
-        unique_id = f"{hub._host}_{hub._port}_{relay_name}_{light_config[CONF_NAME].lower().replace(' ', '_')}"
+        # Use address-based unique_id for stability across config changes
+        # Format: {host}_{port}_{device_address}_{relay_address}_light
+        device_address = config.get("device_address", 1)
+        unique_id = f"{hub._host}_{hub._port}_{device_address}_{light_config[CONF_ADDRESS]}_light"
         _LOGGER.debug("Generated unique_id: %s", unique_id)
         entities.append(
             WaveshareRelayLight(
@@ -76,10 +76,10 @@ async def async_setup_entry(
     # Add lights
     for light_config in config.get(CONF_LIGHTS, []):
         _LOGGER.debug("Adding light entity: %s", light_config[CONF_NAME])
-        # Use the relay name from the parent config
-        relay_name = config[CONF_NAME]
-        # Include host and port in unique_id to prevent collisions
-        unique_id = f"{hub._host}_{hub._port}_{relay_name}_{light_config[CONF_NAME].lower().replace(' ', '_')}"
+        # Use address-based unique_id for stability across config changes
+        # Format: {host}_{port}_{device_address}_{relay_address}_light
+        device_address = config.get("device_address", 1)
+        unique_id = f"{hub._host}_{hub._port}_{device_address}_{light_config[CONF_ADDRESS]}_light"
         _LOGGER.debug("Generated unique_id: %s", unique_id)
         entities.append(
             WaveshareRelayLight(
